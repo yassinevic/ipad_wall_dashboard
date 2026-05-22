@@ -1,0 +1,137 @@
+# =========================
+# 🧠 Core Device
+# =========================
+esphome:
+  name: ${devicename}   # Device name (used in HA + hostname)
+
+# =========================
+# 📶 WiFi Configuration
+# =========================
+wifi:
+  networks:
+    - ssid: !secret iot_wifi_ssid
+      password: !secret iot_wifi_password
+
+  ap:  # Fallback hotspot if WiFi fails
+    ssid: "${devicename}_fallback"
+    password: "12345678"
+
+  domain: .lan # Remove the extension if the host ends with .local. Otherwise, use your own
+  reboot_timeout: 5min   # Restart if WiFi is lost too long
+
+# =========================
+# 📝 Logging
+# =========================
+logger:
+  # baud_rate: 0  # Uncomment to disable UART logs
+
+# =========================
+# 🌐 Network Discovery
+# =========================
+mdns:
+  # Enables access via http://devicename.local / .lan
+
+# =========================
+# 📲 Fallback Config Portal
+# =========================
+captive_portal:
+  # Opens config page when connected to fallback AP
+
+# =========================
+# 📡 API (Home Assistant communication)
+# =========================
+api:
+  encryption:
+    key: ${key}
+
+# =========================
+# 🔄 OTA Updates
+# =========================
+ota:
+  platform: esphome
+  password: ""  # Set password for security if needed
+
+# =========================
+# 🌍 Web Interface
+# =========================
+web_server:
+  port: 80  # Access via browser (IP address)
+
+
+# =========================
+# 🧠 Diagnostics Sensors
+# =========================
+
+sensor:
+  # Raw uptime (seconds)
+  - platform: uptime
+    name: "Uptime (raw)"
+    id: uptime_raw
+    entity_category: diagnostic
+    internal: true
+
+  # WiFi signal strength
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    id: wifi_signal_db
+    update_interval: 60s
+    entity_category: diagnostic
+
+  # Optional: WiFi signal in %
+  - platform: copy
+    source_id: wifi_signal_db
+    name: "WiFi Signal (%)"
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    entity_category: diagnostic
+
+text_sensor:
+  # WiFi info
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+      entity_category: diagnostic
+    ssid:
+      name: "WiFi SSID"
+      entity_category: diagnostic
+    mac_address:
+      name: "MAC Address"
+      entity_category: diagnostic
+
+  # Firmware version
+  - platform: template
+    name: "Firmware Version"
+    icon: "mdi:information-outline"
+    entity_category: diagnostic
+    lambda: |-
+      return {"${firmware_version}"};
+
+  # Human-readable uptime
+  - platform: template
+    name: "Uptime"
+    icon: "mdi:clock-outline"
+    entity_category: diagnostic
+    lambda: |-
+      int seconds = id(uptime_raw).state;
+      int days = seconds / 86400;
+      int hours = (seconds % 86400) / 3600;
+      int minutes = (seconds % 3600) / 60;
+      char buffer[50];
+      sprintf(buffer, "%dd %dh %dm", days, hours, minutes);
+      return {buffer};
+
+# =========================
+# 🔧 Extra useful system info
+# =========================
+
+button:
+  - platform: restart
+    name: "Restart Device"
+    entity_category: diagnostic
+
+  - platform: safe_mode
+    name: "Restart (Safe Mode)"
+    entity_category: diagnostic
+
+debug:
+  update_interval: 60s
