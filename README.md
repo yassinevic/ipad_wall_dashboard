@@ -65,6 +65,22 @@ launchctl load /Library/LaunchDaemons/com.dispatcher.socat.plist
 
 ```
 
+## 🏠 Home Assistant Integration
+
+Add the following to your `configuration.yaml`:
+
+```yaml
+shell_command:
+  unlock_wall_dashboard: "(echo 'unlock'; sleep 1) | socat - TCP:192.168.x.x:8090"
+  wall_dashboard_battery: "(echo 'battery'; sleep 1) | socat - TCP:192.168.x.x:8090"
+```
+
+> Replace `192.168.x.x` with your iPad's local IP address or hostname.
+
+Then:
+1. Reboot Home Assistant
+2. Go to **Developer Tools → Actions** tab
+3. Search for `shell_command.unlock_wall_dashboard` or `shell_command.wall_dashboard_battery` and test
 ---
 
 ## ⚠️ Notes
