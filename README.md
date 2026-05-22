@@ -52,6 +52,7 @@ bash install.sh
 The installer will attempt to fetch the following via Cydia/offline sources:
 - `socat`
 - `Insomnia` (keep-awake tweak)
+- `AirSpeaker` (AirPlay receiver)
 - `bash` (if not already present)
 
 ---
