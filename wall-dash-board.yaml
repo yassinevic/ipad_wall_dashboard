@@ -1,0 +1,273 @@
+substitutions:
+  devicename: wall-dash-board
+  firmware_version: 1.0.0
+  key: "
+  ipad_ip: "192.168.x.x"
+  ipad_port: "8090"
+
+packages:
+  remote_package: !include common.yaml
+
+wifi:
+  on_connect:
+    then:
+      - script.execute: fetch_battery
+
+esp8266:
+  board: nodemcuv2
+
+globals:
+  - id: last_detected
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+script:
+  # =========================
+  # FETCH BATTERY INFO
+  # =========================
+  - id: fetch_battery
+    mode: restart
+    then:
+      - lambda: |-
+          WiFiClient client;
+
+          if (client.connect("${ipad_ip}", ${ipad_port})) {
+
+            client.print("battery\n");
+
+            client.setTimeout(1000);
+
+            String response = client.readStringUntil('\n');
+
+            client.stop();
+
+            response.trim();
+
+            ESP_LOGI("battery", "Response: %s", response.c_str());
+
+            // Expected:
+            // level|state|temp
+            // Example:
+            // 85|1|31.5
+
+            int i = 0;
+            int j = response.indexOf("|");
+
+            if (j == -1) {
+              ESP_LOGE("battery", "Invalid response");
+              return;
+            }
+
+            String level = response.substring(i, j);
+
+            i = j + 1;
+            j = response.indexOf("|", i);
+
+            if (j == -1) {
+              ESP_LOGE("battery", "Invalid response");
+              return;
+            }
+
+            String state = response.substring(i, j);
+
+            i = j + 1;
+
+            String temp = response.substring(i);
+
+            level.trim();
+            state.trim();
+            temp.trim();
+
+            id(battery_level).publish_state(level.toFloat());
+
+            String charging =
+              (state == "1") ? "Charging" : "Not Charging";
+
+            id(charging_state).publish_state(charging.c_str());
+
+            id(battery_temp).publish_state(temp.toFloat());
+
+          } else {
+
+            ESP_LOGE("battery", "Connection failed");
+
+          }
+
+  # =========================
+  # UNLOCK SCRIPT
+  # =========================
+  - id: unlock_script
+    mode: restart
+    then:
+      - lambda: |-
+          WiFiClient client;
+
+          if (client.connect("${ipad_ip}", ${ipad_port})) {
+
+            client.print("unlock\n");
+
+            client.setTimeout(1000);
+
+            String response = client.readStringUntil('\n');
+
+            client.stop();
+
+            response.trim();
+
+            ESP_LOGI("unlock", "Response: %s", response.c_str());
+
+            id(ipad_lock_state).publish_state("Unlocked");
+
+          } else {
+
+            ESP_LOGE("unlock", "Connection failed");
+
+          }
+
+sensor:
+  # =========================
+  # BATTERY TEMPERATURE
+  # =========================
+  - platform: template
+    name: "Battery Temperature"
+    id: battery_temp
+    icon: mdi:thermometer
+    unit_of_measurement: "°C"
+    update_interval: never
+
+  # =========================
+  # BATTERY LEVEL
+  # =========================
+  - platform: template
+    name: "Battery Level"
+    id: battery_level
+    icon: mdi:battery
+    unit_of_measurement: "%"
+    update_interval: never
+
+  # =========================
+  # ULTRASONIC SENSOR
+  # =========================
+  - platform: ultrasonic
+    trigger_pin: GPIO12
+    echo_pin: GPIO14
+
+    id: distance_raw
+
+    internal: true
+
+    update_interval: 500ms
+
+    filters:
+      - filter_out: nan
+      - multiply: 100
+
+    on_value:
+      then:
+        - lambda: |-
+            if (isnan(x)) {
+
+              if (id(last_detected)) {
+
+                id(last_detected) = false;
+
+                id(proximity_state).publish_state("Out of Range");
+
+                id(onboard_led).turn_off();
+
+                ESP_LOGI("prox", "EXITED zone (NaN)");
+              }
+
+              return;
+            }
+
+            bool detected = (x <= 10 && x > 0);
+
+            // =========================
+            // ENTER
+            // =========================
+            if (detected && !id(last_detected)) {
+
+              id(last_detected) = true;
+
+              id(proximity_state).publish_state("In Range");
+
+              id(onboard_led).turn_on();
+
+              id(unlock_script).execute();
+
+              ESP_LOGI("prox", "ENTERED zone");
+            }
+
+            // =========================
+            // EXIT
+            // =========================
+            if (!detected && id(last_detected)) {
+
+              id(last_detected) = false;
+
+              id(proximity_state).publish_state("Out of Range");
+
+              id(onboard_led).turn_off();
+
+              ESP_LOGI("prox", "EXITED zone");
+            }
+
+text_sensor:
+  # =========================
+  # PROXIMITY STATE
+  # =========================
+  - platform: template
+    name: "Proximity Detected"
+    id: proximity_state
+    icon: mdi:radiator
+    update_interval: never
+
+  # =========================
+  # CHARGING STATE
+  # =========================
+  - platform: template
+    name: "Charging State"
+    id: charging_state
+    icon: mdi:battery-charging
+    update_interval: never
+
+  # =========================
+  # LOCK STATE
+  # =========================
+  - platform: template
+    name: "Lock"
+    id: ipad_lock_state
+    icon: mdi:lock
+    update_interval: never
+
+interval:
+  # =========================
+  # BATTERY REFRESH
+  # =========================
+  - interval: 5min
+    then:
+      - script.execute: fetch_battery
+
+button:
+  # =========================
+  # MANUAL UNLOCK
+  # =========================
+  - platform: template
+    name: "Unlock"
+    icon: mdi:lock-open-variant
+
+    on_press:
+      - script.execute: unlock_script
+
+output:
+  # =========================
+  # ONBOARD LED
+  # =========================
+  - platform: gpio
+    pin:
+      number: D4
+      inverted: true
+
+    id: onboard_led
