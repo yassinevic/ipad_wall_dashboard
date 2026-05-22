@@ -25,9 +25,9 @@ setup.tar  → payload (scripts + configs)
 ## 🚀 Installation
 
 ### 1. Copy files to your iPad
-Place the files in a directory such as:
+Place the files in :
 ```
-/var/mobile/setup/
+/var/root
 ```
 Make sure you have:
 - `install.sh`
@@ -59,7 +59,9 @@ The installer will attempt to fetch the following via Cydia/offline sources:
 Once installed, services start automatically on boot.
 To manually restart the dispatcher:
 ```bash
-/var/mobile/setup/start.sh
+launchctl unload /Library/LaunchDaemons/com.dispatcher.socat.plist
+launchctl load /Library/LaunchDaemons/com.dispatcher.socat.plist
+
 ```
 
 ---
@@ -72,4 +74,4 @@ To manually restart the dispatcher:
 ---
 
 ## 📄 License
-MIT
+free free free
