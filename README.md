@@ -15,6 +15,13 @@ This project installs background services, TCP automation, and system utilities 
 
 ---
 
+## 📋 Requirements
+- Jailbroken iPad (iPad 3 or compatible legacy device)
+- OpenSSH installed and active on the iPad
+  - Install via Cydia: search for **OpenSSH** and enable the service
+  - Default SSH port: `22`
+  - Connect with: `ssh root@192.168.x.x` (default password: `alpine`)
+  
 ## 📦 Project Files
 ```
 install.sh → main installer script
