@@ -11,6 +11,7 @@ This project installs background services, TCP automation, and system utilities 
 - 📟 Designed for old iPads (iPad 3 / legacy devices)
 - 🔋 Always-on behavior using Insomnia
 - 🧩 Fully offline installation
+- 🔊 Network music speaker via AirSpeaker (AirPlay receiver)
 
 ---
 
